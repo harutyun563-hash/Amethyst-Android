@@ -398,7 +398,7 @@ public class LauncherActivity extends BaseActivity {
             finish();
         }
 
-        super.onBackPressed();
+        super.onBackPressed();if (HtmlLauncher.handleBack()) return;
     }
 
     @Override
