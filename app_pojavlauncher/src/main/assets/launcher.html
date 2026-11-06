@@ -3,94 +3,132 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Launcher</title>
+<title>Friend Launcher</title>
 <style>
 :root{
-  --stone:#c6c6c6; --hi:#fff; --lo:#555; --ink:#3f3f3f;
-  --sky:#8fcdfb; --sky2:#d8f0ff; --grass:#5da130; --grass2:#7bc043; --dirt:#8a5a2c;
-  --green:#5ea832; --green-hi:#93e05a; --green-lo:#2d5a14;
-  --font:ui-monospace,Menlo,Consolas,"Courier New",monospace;
+  --bg:#161616; --side:#1f1f1f; --card:#262626; --line:#343434;
+  --text:#f2f2f2; --dim:#9a9a9a; --acc:#ff4a1c; --acc2:#c93610; --ok:#4cd964;
+  --font:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 }
-*{box-sizing:border-box;margin:0;padding:0;image-rendering:pixelated}
-html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--ink);
-  background:linear-gradient(var(--sky) 0 65%,var(--sky2));overflow-x:hidden}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font);font-size:14px;color:var(--text);overflow:hidden;
+  background:radial-gradient(900px 400px at 85% -10%,rgba(255,74,28,.18),transparent 60%),var(--bg)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 
-/* земля и облака */
-body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:16vh;z-index:-1;pointer-events:none;
-  background:
-    repeating-linear-gradient(90deg,rgba(0,0,0,.09) 0 8px,transparent 8px 16px),
-    linear-gradient(var(--grass2) 0 6px,var(--grass) 6px 24px,var(--dirt) 24px)}
-.cloud{position:fixed;z-index:-1;width:48px;height:16px;background:#fff;pointer-events:none;
-  box-shadow:16px -16px 0 #fff,32px -16px 0 #fff,48px 0 0 #fff,64px 0 0 #fff,-16px 0 0 #fff}
-.c1{top:9%;left:6%}.c2{top:20%;left:62%;transform:scale(.8)}
+.app{height:100%;display:grid;grid-template-columns:clamp(190px,30vw,250px) 1fr;
+  padding-left:env(safe-area-inset-left,0);padding-right:env(safe-area-inset-right,0)}
 
-main{min-height:100%;max-width:940px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center;
-  padding:10px max(18px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left))}
-.hero,.side{display:flex;flex-direction:column;gap:12px}
+/* боковая панель */
+aside{background:var(--side);border-right:1px solid var(--line);padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;gap:10px;min-height:0}
+.logo{text-align:center;line-height:1}
+.logo b{font-size:clamp(20px,6.5vh,28px);letter-spacing:2px}
+.logo b i{color:var(--acc);font-style:normal}
+.logo small{display:block;font-size:11px;letter-spacing:6px;color:var(--dim);margin-top:4px}
+.tag{text-align:center;font-size:12px;color:var(--dim)}
 
-h1{font-size:clamp(26px,9vh,46px);color:#fff;letter-spacing:4px;text-transform:uppercase;line-height:1;
-  text-shadow:3px 3px 0 var(--ink),-1px -1px 0 var(--ink),1px -1px 0 var(--ink),-1px 1px 0 var(--ink)}
-.sub{color:#fff;font-size:12px;text-shadow:2px 2px 0 var(--ink);margin-top:-4px}
+.acc{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:8px;padding:8px;text-align:left;width:100%}
+.ava{width:38px;height:38px;border-radius:6px;background:linear-gradient(135deg,#5b8def,#8a5bef);display:grid;place-items:center;font-weight:bold;font-size:18px;flex:none}
+.acc span{display:flex;flex-direction:column;min-width:0}
+.acc b{font-size:13px}.acc small{font-size:11px;color:var(--dim)}
 
-/* панель в стиле меню игры */
-.gui{background:var(--stone);border:4px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);
-  box-shadow:0 0 0 3px #000;padding:12px;display:flex;flex-direction:column;gap:10px}
-label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px}
-.row{display:flex;justify-content:space-between}
+.ver{background:var(--card);border-radius:8px;padding:10px;text-align:center;width:100%;display:flex;justify-content:center;gap:8px}
+.ver small{color:var(--dim)}
+.spacer{flex:1}
 
-input[type=text],select{background:#000;color:#fff;font:inherit;border-radius:0;outline:none;padding:8px;width:100%;
-  border:3px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
-input[type=text]:focus,select:focus{outline:2px solid #fff;outline-offset:1px}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:#000;border-radius:0;
-  border:3px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:24px;border-radius:0;
-  background:var(--stone);border:3px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);box-shadow:0 0 0 2px #000}
+#play{background:var(--acc);color:#fff;font-weight:bold;font-size:clamp(15px,4.5vh,20px);border-radius:6px;padding:clamp(10px,3vh,15px);width:100%;
+  box-shadow:0 4px 0 var(--acc2)}
+#play:active{transform:translateY(3px);box-shadow:0 1px 0 var(--acc2)}
+#play:disabled{background:#4a4a4a;box-shadow:none;color:#aaa}
+.stat{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--dim);min-height:18px}
+.stat::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+.bar{height:5px;background:#101010;border-radius:3px;overflow:hidden}
+#fill{height:100%;width:0;background:var(--acc);transition:width .2s}
 
-#play{font:inherit;font-weight:bold;font-size:clamp(16px,5vh,24px);text-transform:uppercase;letter-spacing:3px;color:#fff;
-  text-shadow:2px 2px 0 var(--green-lo);background:var(--green);border-radius:0;padding:clamp(10px,3.5vh,18px);
-  border:4px solid;border-color:var(--green-hi) var(--green-lo) var(--green-lo) var(--green-hi);box-shadow:0 0 0 3px #000}
-#play:active{background:#4b8a28;border-color:var(--green-lo) var(--green-hi) var(--green-hi) var(--green-lo)}
-#play:disabled{background:#8a8a8a;color:#d0d0d0;text-shadow:2px 2px 0 #555;border-color:#b0b0b0 #555 #555 #b0b0b0}
+/* основная часть */
+section{display:flex;flex-direction:column;min-width:0;min-height:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+nav{display:flex;gap:6px;align-items:center;margin-bottom:12px}
+nav .t{padding:8px 16px;border-radius:6px;color:var(--dim);font-weight:600}
+nav .t.on{background:var(--acc);color:#fff}
+nav .gear{margin-left:auto;font-size:22px;color:var(--dim);padding:4px 8px}
+.pane{display:none;flex:1;min-height:0;overflow-y:auto}
+.pane.on{display:block}
 
-.bar{height:18px;background:#000;border:3px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);position:relative}
-#fill{height:100%;width:0;background:var(--green-hi);box-shadow:inset 0 -4px 0 var(--green);transition:width .2s steps(8)}
-.bar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 10px,#000 10px 12px)}
-#status{font-size:12px;min-height:15px}
-#log{background:#000;color:#9fe870;border:3px solid;border-color:var(--lo) var(--hi) var(--hi) var(--lo);
-  height:clamp(48px,16vh,90px);overflow-y:auto;padding:6px;font-size:11px;line-height:1.4;white-space:pre-wrap;word-break:break-all}
-
-#native{font:inherit;font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--ink);
-  background:var(--stone);border-radius:0;padding:10px;border:4px solid;border-color:var(--hi) var(--lo) var(--lo) var(--hi);box-shadow:0 0 0 2px #000}
-#native:active{border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+h2{font-size:clamp(18px,5vh,24px);margin-bottom:6px}
+.hero{background:linear-gradient(135deg,#6a2bd9,#c2336b 55%,#ff4a1c);border-radius:10px;padding:16px;margin-bottom:12px}
+.hero p{opacity:.9;margin-top:2px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.step{background:var(--card);border-radius:8px;padding:10px;font-size:12px;color:var(--dim)}
+.step b{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
+h3{font-size:13px;color:var(--dim);margin:6px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 12px;font-size:12px}
+.chip.on{border-color:var(--acc);color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.grid .chip{text-align:center;padding:14px 6px;font-size:14px}
+.tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tools input{flex:1 1 120px;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:8px 10px;font:inherit;outline:none}
+.tools input:focus{border-color:var(--acc)}
+.hint{color:var(--dim);font-size:12px;margin-top:8px}
+#log{background:#101010;border-radius:8px;padding:10px;height:100%;overflow-y:auto;font-family:ui-monospace,Menlo,monospace;
+  font-size:11px;line-height:1.5;color:#b8b8b8;white-space:pre-wrap;word-break:break-all}
 
 @media (orientation:portrait){
-  main{grid-template-columns:1fr;align-content:start;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  html,body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto;min-height:100%}
+  aside{border-right:0;border-bottom:1px solid var(--line);padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  .spacer{display:none}
 }
 </style>
 </head>
 <body>
-<div class="cloud c1"></div><div class="cloud c2"></div>
-<main>
-  <section class="hero">
-    <h1>MineLaunch</h1>
-    <p class="sub">Java Edition · Android</p>
+<div class="app">
+  <aside>
+    <div class="logo"><b>FRI<i>:</i>END</b><small>LAUNCHER</small></div>
+    <div class="tag">Играем с друзьями!</div>
+    <button class="acc" id="acc">
+      <div class="ava">F</div>
+      <span><b>Аккаунт</b><small>Менеджер аккаунтов ›</small></span>
+    </button>
+    <button class="ver" id="verbtn"><small>Версия</small><b id="curs">—</b></button>
+    <div class="spacer"></div>
     <button id="play">Играть</button>
-    <div class="gui">
-      <div class="bar"><div id="fill"></div></div>
-      <div id="status">Готов к запуску</div>
-    </div>
-  </section>
+    <div class="bar"><div id="fill"></div></div>
+    <div class="stat" id="status">Готов к запуску</div>
+  </aside>
 
-  <section class="side">
-    <div class="gui">
-      <button id="native" type="button">Аккаунт и настройки</button>
-      <label>Версия
-        <select id="ver"></select>
-      </label>
+  <section>
+    <nav>
+      <button class="t on" data-tab="home">Главная</button>
+      <button class="t" data-tab="vers">Версии</button>
+      <button class="t" data-tab="logs">Журнал</button>
+      <button class="gear" id="gear" aria-label="Настройки">⚙</button>
+    </nav>
+
+    <div class="pane on" id="home">
+      <div class="hero"><h2>Готов играть?</h2><p>Выбрана версия <b id="cur">—</b></p></div>
+      <div class="steps">
+        <div class="step"><b>1. Аккаунт</b>Войди через «Аккаунт»</div>
+        <div class="step"><b>2. Версия</b>Выбери ниже или во вкладке</div>
+        <div class="step"><b>3. Играть</b>Нажми оранжевую кнопку</div>
+      </div>
+      <h3>Быстрый выбор</h3>
+      <div class="chips" id="chips"></div>
     </div>
-    <div id="log"></div>
+
+    <div class="pane" id="vers">
+      <div class="tools">
+        <input id="q" placeholder="Поиск версии…" autocomplete="off" autocapitalize="off">
+        <button class="chip" data-f="release">Релизы</button>
+        <button class="chip" data-f="snapshot">Снапшоты</button>
+        <button class="chip" data-f="old">Старые</button>
+      </div>
+      <div class="grid" id="vgrid"></div>
+      <div class="hint" id="empty"></div>
+    </div>
+    <div class="pane" id="logs"><div id="log"></div></div>
   </section>
-</main>
+</div>
 
 <script>
 /* ===== Мост к Android =====
@@ -107,33 +145,86 @@ const store = {
   get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : v; } catch(e){ return d; } },
   set(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
 };
+let ver = '', all = [], quick = [], flt = 'release', qry = '';
 
 function log(t){ const l = $('log'); l.textContent += t + '\n'; l.scrollTop = l.scrollHeight; }
 function setProgress(p, t){ $('fill').style.width = p + '%'; if (t !== undefined) $('status').textContent = t; }
 function lock(on){ $('play').disabled = on; $('play').textContent = on ? 'Запуск…' : 'Играть'; }
+function tab(id){
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === id));
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
+}
 
 window.onProgress = setProgress;
 window.onLog = log;
 window.onGameStarted = () => { setProgress(100, 'Игра запущена'); lock(false); };
-window.onError = m => { log('! ' + m); setProgress(0, 'Ошибка'); lock(false); };
+window.onError = m => { log('! ' + m); setProgress(0, 'Ошибка: ' + m); lock(false); };
 
-function loadVersions(){
-  let list = [];
-  try { list = JSON.parse(A ? A.getInstalledVersions() : '[]'); } catch(e){}
-  ['1.21.1', '1.20.4', '1.16.5', '1.12.2', '1.8.9'].forEach(v => { if (!list.includes(v)) list.push(v); });
-  const sel = $('ver');
-  sel.innerHTML = '';
-  list.forEach(v => { const o = document.createElement('option'); o.value = o.textContent = v; sel.appendChild(o); });
-  sel.value = store.get('ver', list[0]);
-  if (!sel.value) sel.value = list[0];
+/* Встроенный список всех релизов Java Edition: версия -> номера патчей (0 = без суффикса) */
+const rg = n => Array.from({length: n + 1}, (_, k) => k);
+const REL = {
+  '26.2': [0], '26.1': rg(2),
+  '1.21': rg(11), '1.20': rg(6), '1.19': rg(4), '1.18': rg(2), '1.17': rg(1), '1.16': rg(5),
+  '1.15': rg(2), '1.14': rg(4), '1.13': rg(2), '1.12': rg(2), '1.11': rg(2), '1.10': rg(2),
+  '1.9': rg(4), '1.8': rg(9), '1.7': [2, 4, 5, 6, 7, 8, 9, 10], '1.6': [1, 2, 4], '1.5': rg(2),
+  '1.4': [2, 4, 5, 6, 7], '1.3': [1, 2], '1.2': [1, 2, 3, 4, 5], '1.1': [0], '1.0': [0]
+};
+function builtin(){
+  const out = [];
+  for (const m in REL) for (const p of REL[m]) out.push({id: m + (p ? '.' + p : ''), type: 'release'});
+  return out;
 }
 
+function chip(v, host){
+  const b = document.createElement('button');
+  b.className = 'chip' + (v === ver ? ' on' : '');
+  b.textContent = v;
+  b.onclick = () => setVer(v);
+  host.appendChild(b);
+}
+function render(){
+  $('chips').innerHTML = ''; quick.forEach(v => chip(v, $('chips')));
+  const g = $('vgrid'); g.innerHTML = '';
+  const items = all.filter(x => (flt === 'old' ? x.type.indexOf('old') === 0 : x.type === flt) && x.id.toLowerCase().indexOf(qry) >= 0);
+  items.slice(0, 300).forEach(x => chip(x.id, g));
+  $('empty').textContent = !items.length ? 'Ничего не найдено (снапшоты и старые версии грузятся из интернета)'
+    : items.length > 300 ? 'Показаны первые 300, уточните поиск' : '';
+  document.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === flt));
+  $('cur').textContent = $('curs').textContent = ver || '—';
+}
+function setVer(v){ ver = v; store.set('ver', v); render(); }
+
+function loadVersions(){
+  let inst = [];
+  try { inst = JSON.parse(A ? A.getInstalledVersions() : '[]'); } catch(e){}
+  all = builtin();
+  inst.forEach(v => { if (!all.some(x => x.id === v)) all.unshift({id: v, type: 'release'}); });
+  quick = inst.length ? inst.slice(0, 6) : ['1.21.1', '1.20.1', '1.16.5', '1.12.2', '1.8.9'];
+  const saved = store.get('ver', '');
+  ver = all.some(x => x.id === saved) ? saved : (quick[0] || '1.21.1');
+  render();
+  // полный список (с снапшотами и старыми версиями) из манифеста Mojang, если есть интернет
+  fetch('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json')
+    .then(r => r.json())
+    .then(m => {
+      const web = m.versions.map(v => ({id: v.id, type: v.type}));
+      inst.forEach(v => { if (!web.some(x => x.id === v)) web.unshift({id: v, type: 'release'}); });
+      all = web; render();
+    })
+    .catch(() => log('Полный список версий недоступен, показан встроенный список релизов'));
+}
+
+document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
+$('verbtn').onclick = () => tab('vers');
+const native = () => { if (A) A.openNative(); else log('(демо) открыть обычный экран'); };
+$('acc').onclick = native;
+$('gear').onclick = native;
+document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { flt = b.dataset.f; render(); });
+$('q').oninput = e => { qry = e.target.value.trim().toLowerCase(); render(); };
 loadVersions();
-$('native').onclick = () => { if (A) A.openNative(); else log('(демо) открыть обычный экран'); };
 
 $('play').onclick = () => {
-  const ver = $('ver').value;
-  store.set('ver', ver);
+  if (!ver) return;
   lock(true);
   setProgress(0, 'Подготовка…');
   log('> ' + ver);
