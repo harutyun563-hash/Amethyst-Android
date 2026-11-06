@@ -325,7 +325,7 @@ public class LauncherActivity extends BaseActivity {
                 }
         );
         getWindow().setBackgroundDrawable(null);
-        bindViews();
+        bindViews(); HtmlLauncher.attach(this);
         checkNotificationPermission();
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         ProgressKeeper.addTaskCountListener(mDoubleLaunchPreventionListener);
@@ -385,6 +385,7 @@ public class LauncherActivity extends BaseActivity {
     /** Custom implementation to feel more natural when a backstack isn't present */
     @Override
     public void onBackPressed() {
+        if (HtmlLauncher.handleBack()) return;
         MicrosoftLoginFragment fragment = (MicrosoftLoginFragment) getVisibleFragment(MicrosoftLoginFragment.TAG);
         if(fragment != null){
             if(fragment.canGoBack()){
