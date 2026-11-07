@@ -2,6 +2,9 @@ package net.kdt.pojavlaunch;
 
 import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
@@ -9,6 +12,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
@@ -27,8 +32,14 @@ import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * HTML-интерфейс лаунчера (assets/launcher.html) поверх главного экрана Amethyst.
@@ -49,7 +60,13 @@ public class HtmlLauncher {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         web.setWebViewClient(new WebViewClient());
-        web.addJavascriptInterface(new Bridge(activity, web), "Android");
+
+        // Выбор jar-файлов модов (регистрируется в onCreate, как положено)
+        final ActivityResultLauncher<String[]> modPicker = activity.registerForActivityResult(
+                new ActivityResultContracts.OpenMultipleDocuments(),
+                uris -> importMods(activity, web, uris));
+
+        web.addJavascriptInterface(new Bridge(activity, web, modPicker), "Android");
         web.loadUrl("file:///android_asset/launcher.html");
 
         activity.addContentView(web, new ViewGroup.LayoutParams(
@@ -90,13 +107,63 @@ public class HtmlLauncher {
         return false;
     }
 
+    // ===== Моды =====
+
+    private static File modsDir() {
+        return new File(Tools.DIR_GAME_NEW, "mods");
+    }
+
+    private static void js(final WebView w, final String code) {
+        w.post(() -> w.evaluateJavascript(code, null));
+    }
+
+    private static String displayName(LauncherActivity activity, Uri uri) {
+        try (Cursor c = activity.getContentResolver().query(uri,
+                new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (c != null && c.moveToFirst()) return c.getString(0);
+        } catch (Exception ignored) {}
+        String last = uri.getLastPathSegment();
+        return last == null ? null : new File(last).getName();
+    }
+
+    private static void importMods(final LauncherActivity activity, final WebView web, final List<Uri> uris) {
+        if (uris == null || uris.isEmpty()) return;
+        PojavApplication.sExecutorService.execute(() -> {
+            File dir = modsDir();
+            dir.mkdirs();
+            int ok = 0;
+            for (Uri uri : uris) {
+                String name = displayName(activity, uri);
+                if (name == null || !name.toLowerCase(Locale.ROOT).endsWith(".jar")) {
+                    js(web, "window.onLog&&window.onLog(" + JSONObject.quote("Пропущен не jar-файл: " + name) + ")");
+                    continue;
+                }
+                // getName() отбрасывает любые пути из имени файла
+                File target = new File(dir, new File(name).getName());
+                try (InputStream in = activity.getContentResolver().openInputStream(uri);
+                     FileOutputStream out = new FileOutputStream(target)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                    ok++;
+                } catch (Exception e) {
+                    js(web, "window.onLog&&window.onLog(" + JSONObject.quote("Не удалось добавить " + name + ": " + e.getMessage()) + ")");
+                }
+            }
+            js(web, "window.onLog&&window.onLog(" + JSONObject.quote("Добавлено модов: " + ok) + ");"
+                    + "window.onModsChanged&&window.onModsChanged()");
+        });
+    }
+
     private static class Bridge {
         private final LauncherActivity mActivity;
         private final WebView mWeb;
+        private final ActivityResultLauncher<String[]> mModPicker;
 
-        Bridge(LauncherActivity activity, WebView web) {
+        Bridge(LauncherActivity activity, WebView web, ActivityResultLauncher<String[]> modPicker) {
             mActivity = activity;
             mWeb = web;
+            mModPicker = modPicker;
         }
 
         /** JSON-массив версий из профилей приложения. */
@@ -169,6 +236,35 @@ public class HtmlLauncher {
         @JavascriptInterface
         public void installJar() {
             mActivity.runOnUiThread(() -> mActivity.modInstallerLauncher.launch(null));
+        }
+
+        /** Выбор jar-файлов модов; копируются в папку mods. */
+        @JavascriptInterface
+        public void addMods() {
+            mActivity.runOnUiThread(() -> mModPicker.launch(new String[]{"*/*"}));
+        }
+
+        /** JSON-массив имён jar-файлов в папке mods. */
+        @JavascriptInterface
+        public String listMods() {
+            JSONArray arr = new JSONArray();
+            try {
+                File[] files = modsDir().listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".jar"));
+                if (files != null) {
+                    Arrays.sort(files);
+                    for (File f : files) arr.put(f.getName());
+                }
+            } catch (Exception ignored) {}
+            return arr.toString();
+        }
+
+        /** Удаляет мод по имени файла. */
+        @JavascriptInterface
+        public void removeMod(String name) {
+            try {
+                File f = new File(modsDir(), new File(name).getName());
+                if (f.isFile()) f.delete();
+            } catch (Exception ignored) {}
         }
 
         private void error(String msg) {
