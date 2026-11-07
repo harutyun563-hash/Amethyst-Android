@@ -23,6 +23,7 @@ import net.kdt.pojavlaunch.extra.ExtraConstants;
 import net.kdt.pojavlaunch.extra.ExtraCore;
 import net.kdt.pojavlaunch.fragments.MainMenuFragment;
 import net.kdt.pojavlaunch.fragments.MicrosoftLoginFragment;
+import net.kdt.pojavlaunch.fragments.SelectAuthFragment;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceFragment;
 import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
@@ -79,7 +80,8 @@ public class HtmlLauncher {
                 new FragmentManager.FragmentLifecycleCallbacks() {
                     @Override
                     public void onFragmentResumed(FragmentManager fm, Fragment f) {
-                        boolean main = f instanceof MainMenuFragment;
+                        // Экран выбора входа Amethyst открывает сам при пустом списке аккаунтов: прячем его под нашим интерфейсом
+                        boolean main = f instanceof MainMenuFragment || f instanceof SelectAuthFragment;
                         web.setVisibility(main ? View.VISIBLE : View.GONE);
                         if (main) {
                             web.onResume();
