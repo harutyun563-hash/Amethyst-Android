@@ -9,9 +9,18 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+
+import com.kdt.mcgui.ProgressLayout;
+
 import net.kdt.pojavlaunch.extra.ExtraConstants;
 import net.kdt.pojavlaunch.extra.ExtraCore;
+import net.kdt.pojavlaunch.fragments.MainMenuFragment;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
+import net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceFragment;
+import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
+import net.kdt.pojavlaunch.progresskeeper.TaskCountListener;
 import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
 import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
 
@@ -22,11 +31,13 @@ import java.lang.ref.WeakReference;
 import java.util.LinkedHashSet;
 
 /**
- * HTML-интерфейс лаунчера (assets/launcher.html) поверх обычного экрана Amethyst.
- * Обычный интерфейс остаётся под ним и продолжает работать (аккаунты, загрузка, прогресс).
+ * HTML-интерфейс лаунчера (assets/launcher.html) поверх главного экрана Amethyst.
+ * Виден всегда, пока открыт главный экран. Обычные экраны (вход в аккаунт, настройки)
+ * открываются только по кнопкам и закрываются кнопкой «Назад».
  */
 public class HtmlLauncher {
     private static WeakReference<WebView> sWebView = new WeakReference<>(null);
+    private static TaskCountListener sTaskListener;
 
     /** Вызывается из LauncherActivity.onCreate сразу после bindViews(). */
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -44,18 +55,38 @@ public class HtmlLauncher {
         activity.addContentView(web, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         sWebView = new WeakReference<>(web);
+
+        // HTML виден на главном экране; на других экранах (вход, настройки) он скрыт
+        activity.getSupportFragmentManager().registerFragmentLifecycleCallbacks(
+                new FragmentManager.FragmentLifecycleCallbacks() {
+                    @Override
+                    public void onFragmentResumed(FragmentManager fm, Fragment f) {
+                        boolean main = f instanceof MainMenuFragment;
+                        web.setVisibility(main ? View.VISIBLE : View.GONE);
+                        if (main) {
+                            web.onResume();
+                            if (!ProgressLayout.hasProcesses()) {
+                                web.evaluateJavascript("window.onIdle&&window.onIdle()", null);
+                            }
+                        } else {
+                            web.onPause();
+                        }
+                    }
+                }, false);
+
+        // Занятость: пока идёт загрузка игры, кнопка заблокирована
+        if (sTaskListener != null) ProgressKeeper.removeTaskCountListener(sTaskListener);
+        sTaskListener = count -> {
+            WebView w = sWebView.get();
+            if (w == null) return;
+            final String call = count > 0 ? "window.onBusy&&window.onBusy()" : "window.onIdle&&window.onIdle()";
+            w.post(() -> w.evaluateJavascript(call, null));
+        };
+        ProgressKeeper.addTaskCountListener(sTaskListener);
     }
 
-    /** Вызывается в начале LauncherActivity.onBackPressed(). true = нажатие обработано. */
+    /** Оставлено для совместимости с правкой в LauncherActivity.onBackPressed(). */
     public static boolean handleBack() {
-        WebView web = sWebView.get();
-        if (web == null || web.getVisibility() == View.VISIBLE) return false;
-        LauncherActivity activity = (LauncherActivity) web.getContext();
-        // Мы на главном экране обычного интерфейса: возвращаем HTML-лаунчер
-        if (activity.getSupportFragmentManager().getBackStackEntryCount() <= 1) {
-            web.setVisibility(View.VISIBLE);
-            return true;
-        }
         return false;
     }
 
@@ -95,7 +126,7 @@ public class HtmlLauncher {
                             .getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, "");
                     if (LauncherProfiles.mainProfileJson == null
                             || !LauncherProfiles.mainProfileJson.profiles.containsKey(selected)) {
-                        error("Нет выбранного профиля. Нажмите «Аккаунт и настройки» и выберите профиль.");
+                        error("Нет выбранного профиля.");
                         return;
                     }
                     MinecraftProfile prof = LauncherProfiles.mainProfileJson.profiles.get(selected);
@@ -107,19 +138,37 @@ public class HtmlLauncher {
                     LauncherProfiles.mainProfileJson.profiles.put(selected, prof);
                     LauncherProfiles.write();
 
-                    // Прячем HTML, чтобы был виден обычный прогресс загрузки
-                    mWeb.setVisibility(View.GONE);
                     ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);
+
+                    // Если загрузка не началась (например, нет аккаунта), разблокируем кнопку
+                    mWeb.postDelayed(() -> {
+                        if (!ProgressLayout.hasProcesses()) {
+                            mWeb.evaluateJavascript("window.onIdle&&window.onIdle()", null);
+                        }
+                    }, 2500);
                 } catch (Exception e) {
                     error("Ошибка запуска: " + e.getMessage());
                 }
             });
         }
 
-        /** Скрывает HTML и показывает обычный экран (аккаунты, профили, настройки). */
+        /** Экран выбора способа входа / добавления аккаунта. */
         @JavascriptInterface
-        public void openNative() {
-            mActivity.runOnUiThread(() -> mWeb.setVisibility(View.GONE));
+        public void openAccounts() {
+            mActivity.runOnUiThread(() -> ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true));
+        }
+
+        /** Обычные настройки игры. */
+        @JavascriptInterface
+        public void openSettings() {
+            mActivity.runOnUiThread(() -> Tools.swapFragment(mActivity,
+                    LauncherPreferenceFragment.class, LauncherActivity.SETTING_FRAGMENT_TAG, null));
+        }
+
+        /** Выбор jar-файла установщика (Forge / Fabric) штатным способом. */
+        @JavascriptInterface
+        public void installJar() {
+            mActivity.runOnUiThread(() -> mActivity.modInstallerLauncher.launch(null));
         }
 
         private void error(String msg) {
