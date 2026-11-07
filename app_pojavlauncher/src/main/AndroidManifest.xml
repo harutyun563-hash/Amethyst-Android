@@ -35,7 +35,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:isGame="true"
-        android:label="friend launcher"
+        android:label="Friend Launcher"
         android:process=":launcher"
         android:resizeableActivity="true"
         android:theme="@style/AppTheme">
