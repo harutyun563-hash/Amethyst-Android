@@ -48,7 +48,7 @@
             android:value="ratio_float" />
 
         <activity
-            android:name=".TestStorageActivity"
+            android:name=".Friend Launcher"
             android:exported="true"
             android:label="@string/app_short_name"
             android:launchMode="singleTop">
@@ -59,7 +59,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".LauncherActivity"
+            android:name=".Friend Launcher"
             android:label="@string/app_short_name"
             android:windowSoftInputMode="adjustResize"/>
         <activity
