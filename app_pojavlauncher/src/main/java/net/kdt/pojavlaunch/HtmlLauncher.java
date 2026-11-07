@@ -22,6 +22,7 @@ import com.kdt.mcgui.ProgressLayout;
 import net.kdt.pojavlaunch.extra.ExtraConstants;
 import net.kdt.pojavlaunch.extra.ExtraCore;
 import net.kdt.pojavlaunch.fragments.MainMenuFragment;
+import net.kdt.pojavlaunch.fragments.MicrosoftLoginFragment;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceFragment;
 import net.kdt.pojavlaunch.progresskeeper.ProgressKeeper;
@@ -43,8 +44,8 @@ import java.util.Locale;
 
 /**
  * HTML-интерфейс лаунчера (assets/launcher.html) поверх главного экрана Amethyst.
- * Виден всегда, пока открыт главный экран. Обычные экраны (вход в аккаунт, настройки)
- * открываются только по кнопкам и закрываются кнопкой «Назад».
+ * Виден всегда, пока открыт главный экран. Обычные экраны (окно входа Microsoft, настройки)
+ * открываются только по кнопкам и закрываются сами или кнопкой «Назад».
  */
 public class HtmlLauncher {
     private static WeakReference<WebView> sWebView = new WeakReference<>(null);
@@ -73,7 +74,7 @@ public class HtmlLauncher {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         sWebView = new WeakReference<>(web);
 
-        // HTML виден на главном экране; на других экранах (вход, настройки) он скрыт
+        // HTML виден на главном экране; на других экранах (вход Microsoft, настройки) он скрыт
         activity.getSupportFragmentManager().registerFragmentLifecycleCallbacks(
                 new FragmentManager.FragmentLifecycleCallbacks() {
                     @Override
@@ -82,6 +83,7 @@ public class HtmlLauncher {
                         web.setVisibility(main ? View.VISIBLE : View.GONE);
                         if (main) {
                             web.onResume();
+                            web.evaluateJavascript("window.onShown&&window.onShown()", null);
                             if (!ProgressLayout.hasProcesses()) {
                                 web.evaluateJavascript("window.onIdle&&window.onIdle()", null);
                             }
@@ -107,7 +109,7 @@ public class HtmlLauncher {
         return false;
     }
 
-    // ===== Моды =====
+    // ===== Вспомогательное =====
 
     private static File modsDir() {
         return new File(Tools.DIR_GAME_NEW, "mods");
@@ -155,6 +157,14 @@ public class HtmlLauncher {
         });
     }
 
+    /** Файлы аккаунтов Amethyst лежат в DIR_ACCOUNT_NEW как «ник.json». */
+    private static File[] accountFiles() {
+        File[] files = new File(Tools.DIR_ACCOUNT_NEW).listFiles((d, n) -> n.endsWith(".json"));
+        if (files == null) return new File[0];
+        Arrays.sort(files);
+        return files;
+    }
+
     private static class Bridge {
         private final LauncherActivity mActivity;
         private final WebView mWeb;
@@ -189,6 +199,10 @@ public class HtmlLauncher {
         public void startGame(final String versionId) {
             mActivity.runOnUiThread(() -> {
                 try {
+                    if (accountFiles().length == 0) {
+                        error("Сначала добавьте аккаунт (карточка «Аккаунт»).");
+                        return;
+                    }
                     String selected = LauncherPreferences.DEFAULT_PREF
                             .getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, "");
                     if (LauncherProfiles.mainProfileJson == null
@@ -207,7 +221,7 @@ public class HtmlLauncher {
 
                     ExtraCore.setValue(ExtraConstants.LAUNCH_GAME, true);
 
-                    // Если загрузка не началась (например, нет аккаунта), разблокируем кнопку
+                    // Если загрузка не началась, разблокируем кнопку
                     mWeb.postDelayed(() -> {
                         if (!ProgressLayout.hasProcesses()) {
                             mWeb.evaluateJavascript("window.onIdle&&window.onIdle()", null);
@@ -219,10 +233,45 @@ public class HtmlLauncher {
             });
         }
 
-        /** Экран выбора способа входа / добавления аккаунта. */
+        /** Сразу окно входа Microsoft (это страница самой Microsoft). */
         @JavascriptInterface
-        public void openAccounts() {
-            mActivity.runOnUiThread(() -> ExtraCore.setValue(ExtraConstants.SELECT_AUTH_METHOD, true));
+        public void loginMicrosoft() {
+            mActivity.runOnUiThread(() -> Tools.swapFragment(mActivity,
+                    MicrosoftLoginFragment.class, MicrosoftLoginFragment.TAG, null));
+        }
+
+        /** Создание локального аккаунта по нику, с теми же проверками, что в Amethyst. */
+        @JavascriptInterface
+        public void createLocalAccount(final String name) {
+            mActivity.runOnUiThread(() -> {
+                String msg = null;
+                if (!Tools.hasOnlineProfile()) {
+                    msg = "Сначала войдите через Microsoft: локальные аккаунты доступны только после этого.";
+                } else if (name == null || !name.matches("^[a-zA-Z0-9_]{3,16}$")) {
+                    msg = "Ник: 3–16 символов, латиница, цифры и _";
+                } else if (new File(Tools.DIR_ACCOUNT_NEW + "/" + name + ".json").exists()) {
+                    msg = "Такой аккаунт уже есть";
+                }
+                if (msg != null) {
+                    js(mWeb, "window.onAccountResult(false," + JSONObject.quote(msg) + ")");
+                    return;
+                }
+                ExtraCore.setValue(ExtraConstants.MOJANG_LOGIN_TODO, new String[]{name, ""});
+                js(mWeb, "window.onAccountResult(true," + JSONObject.quote("Аккаунт создан: " + name) + ")");
+            });
+        }
+
+        /** JSON-массив имён аккаунтов. */
+        @JavascriptInterface
+        public String listAccounts() {
+            JSONArray arr = new JSONArray();
+            try {
+                for (File f : accountFiles()) {
+                    String n = f.getName();
+                    arr.put(n.substring(0, n.length() - 5));
+                }
+            } catch (Exception ignored) {}
+            return arr.toString();
         }
 
         /** Обычные настройки игры. */
